@@ -1,7 +1,9 @@
-FROM ubuntu
-COPY build/output/conf/fwdd.service /etc/systemd/system/
+FROM ubuntu:22.04
+RUN apt update
+RUN apt install -y dpdk=21.11.6-0ubuntu0.22.04.2
+RUN apt install -y dpdk-dev=21.11.6-0ubuntu0.22.04.2
+RUN echo 'export PS1="nstk> "' >> /root/.bashrc
 COPY build/output/bin/fwdd /usr/bin
+COPY build/output/bin/fwdd_start.sh /usr/bin
 COPY build/output/bin/fwdctl /usr/bin
-RUN apt-get update && apt-get install -y systemd
-RUN systemctl enable fwdd.service
-ENTRYPOINT ["/lib/systemd/systemd"]
+CMD ["/usr/bin/fwdd_start.sh"]

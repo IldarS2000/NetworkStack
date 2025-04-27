@@ -24,13 +24,15 @@ function setup_hugepages()
 function build_docker_image()
 {
     echo "Build docker image"
-    docker build -t nstk .
+    docker build -t nstk_image .
 }
 
 function run_container()
 {
+    echo "Delete old container"
+    docker rm -f nstk || true
     echo "Run container"
-    docker run --privileged --net=host -v /mnt/huge:/mnt/huge -v /sys/fs/cgroup:/sys/fs/cgroup:ro nstk
+    docker run -itd --name nstk --privileged --net=host -v /mnt/huge:/mnt/huge -v /sys/fs/cgroup:/sys/fs/cgroup:ro nstk_image
 }
 
 setup_hugepages

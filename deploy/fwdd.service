@@ -1,0 +1,12 @@
+[Unit]
+Description=soft forwarding daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/fwdd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

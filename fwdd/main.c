@@ -16,8 +16,7 @@
 #include <rte_debug.h>
 
 /* Launch a function on lcore. 8< */
-static int
-lcore_hello(__rte_unused void *arg)
+static int lcore_hello(__rte_unused void* arg)
 {
     unsigned lcore_id;
     lcore_id = rte_lcore_id();
@@ -27,7 +26,7 @@ lcore_hello(__rte_unused void *arg)
 /* >8 End of launching function on lcore. */
 
 /* Initialization of Environment Abstraction Layer (EAL). 8< */
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int ret;
     unsigned lcore_id;

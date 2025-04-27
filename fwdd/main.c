@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/queue.h>
 
 #include <rte_memory.h>
@@ -15,12 +16,14 @@
 #include <rte_lcore.h>
 #include <rte_debug.h>
 
+#include "nstk_log.h"
+
 /* Launch a function on lcore. 8< */
 static int lcore_hello(__rte_unused void* arg)
 {
     unsigned lcore_id;
     lcore_id = rte_lcore_id();
-    printf("hello from core %u\n", lcore_id);
+    NSTK_LOG_DEBUG("hello from core %u\n", lcore_id);
     return 0;
 }
 /* >8 End of launching function on lcore. */
@@ -52,6 +55,11 @@ int main(int argc, char** argv)
 
     /* clean up the EAL */
     rte_eal_cleanup();
+
+    while (true) {
+        NSTK_LOG_DEBUG("sleep\n");
+        sleep(5);
+    }
 
     return 0;
 }

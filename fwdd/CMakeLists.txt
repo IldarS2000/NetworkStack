@@ -17,8 +17,10 @@ else()
 endif()
 
 aux_source_directory(. SOURCES)
+aux_source_directory(../common SOURCES)
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} ${DPDK_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PRIVATE ../common)
 
 set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/output")
 set_target_properties(${PROJECT_NAME} PROPERTIES

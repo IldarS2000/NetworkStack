@@ -6,7 +6,9 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O2 -march=native -ffast-math")
 
 aux_source_directory(. SOURCES)
+aux_source_directory(../common SOURCES)
 add_executable(${PROJECT_NAME} ${SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE ../common)
 
 set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/output")
 set_target_properties(${PROJECT_NAME} PROPERTIES

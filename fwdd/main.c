@@ -36,6 +36,7 @@ struct ether_addr my_eth_addr[MAX_PORTS];
 uint32_t my_ip_addr[MAX_PORTS];
 
 /* structure to contains port config */
+
 struct port_conf {
     struct rte_eth_conf eth_conf;
     struct rte_eth_rxconf rx_conf;

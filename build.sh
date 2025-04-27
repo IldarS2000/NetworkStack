@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 set -e
 set -x
@@ -7,12 +7,12 @@ PROJECT_ROOT=$(dirname "$(realpath "$0")")
 cd ${PPROJECT_ROOT}
 BUILD_DIR=${PROJECT_ROOT}/build
 
-function build_clean()
+function clean()
 {
     rm -rf ${BUILD_DIR}
 }
 
-function main()
+function build()
 {
     mkdir -p ${BUILD_DIR}
 
@@ -22,5 +22,5 @@ function main()
     popd
 }
 
-build_clean
-main
+clean
+build

@@ -57,7 +57,7 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
         return ret;
     }
 
-    for (q = 0; q < rx_rings; q++) {
+    for (q = 0; q < rx_rings; ++q) {
         ret = rte_eth_rx_queue_setup(port, q, nb_rxd, rte_eth_dev_socket_id(port), NULL, mbuf_pool);
         if (ret < 0) {
             return ret;
@@ -66,7 +66,7 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
 
     txconf          = dev_info.default_txconf;
     txconf.offloads = port_conf.txmode.offloads;
-    for (q = 0; q < tx_rings; q++) {
+    for (q = 0; q < tx_rings; ++q) {
         ret = rte_eth_tx_queue_setup(port, q, nb_txd, rte_eth_dev_socket_id(port), &txconf);
         if (ret < 0) {
             return ret;
@@ -94,44 +94,44 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
     return EXIT_SUCCESS;
 }
 
-static void NSTK_IcmpFastReply(struct rte_mbuf** pkts, uint16_t nb_pkts, uint16_t port_id, uint16_t* nb_tx)
+static uint16_t NSTK_IcmpFastReply(struct rte_mbuf** pkts, uint16_t port_id)
 {
-    for (uint16_t i = 0; i < nb_pkts; ++i) {
-        struct rte_mbuf* pkt = pkts[i];
+    uint16_t txNum       = 0;
+    struct rte_mbuf* pkt = pkts[0];
 
-        struct rte_ether_hdr* eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
-        if (eth_hdr->ether_type != rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
-            continue;
-        }
-
-        struct rte_ipv4_hdr* ip_hdr = (struct rte_ipv4_hdr*)(eth_hdr + 1);
-        if (ip_hdr->next_proto_id != IPPROTO_ICMP) {
-            continue;
-        }
-
-        struct rte_icmp_hdr* icmp_hdr = (struct rte_icmp_hdr*)((uint8_t*)ip_hdr + sizeof(struct rte_ipv4_hdr));
-        if (icmp_hdr->icmp_type != RTE_IP_ICMP_ECHO_REQUEST) {
-            continue;
-        }
-
-        icmp_hdr->icmp_type = RTE_IP_ICMP_ECHO_REPLY;
-
-        uint32_t temp_ip = ip_hdr->src_addr;
-        ip_hdr->src_addr = ip_hdr->dst_addr;
-        ip_hdr->dst_addr = temp_ip;
-
-        struct rte_ether_addr temp_mac;
-        rte_ether_addr_copy(&eth_hdr->src_addr, &temp_mac);
-        rte_ether_addr_copy(&eth_hdr->dst_addr, &eth_hdr->src_addr);
-        rte_ether_addr_copy(&temp_mac, &eth_hdr->dst_addr);
-
-        icmp_hdr->icmp_cksum = 0;
-        icmp_hdr->icmp_cksum = rte_raw_cksum(icmp_hdr, sizeof(struct rte_icmp_hdr));
-        ip_hdr->hdr_checksum = 0;
-        ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
-
-        *nb_tx += rte_eth_tx_burst(port_id, 0, &pkt, 1);
+    struct rte_ether_hdr* eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
+    if (eth_hdr->ether_type != rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
+        return txNum;
     }
+
+    struct rte_ipv4_hdr* ip_hdr = (struct rte_ipv4_hdr*)(eth_hdr + 1);
+    if (ip_hdr->next_proto_id != IPPROTO_ICMP) {
+        return txNum;
+    }
+
+    struct rte_icmp_hdr* icmp_hdr = (struct rte_icmp_hdr*)((uint8_t*)ip_hdr + sizeof(struct rte_ipv4_hdr));
+    if (icmp_hdr->icmp_type != RTE_IP_ICMP_ECHO_REQUEST) {
+        return txNum;
+    }
+
+    icmp_hdr->icmp_type = RTE_IP_ICMP_ECHO_REPLY;
+
+    uint32_t temp_ip = ip_hdr->src_addr;
+    ip_hdr->src_addr = ip_hdr->dst_addr;
+    ip_hdr->dst_addr = temp_ip;
+
+    struct rte_ether_addr temp_mac;
+    rte_ether_addr_copy(&eth_hdr->src_addr, &temp_mac);
+    rte_ether_addr_copy(&eth_hdr->dst_addr, &eth_hdr->src_addr);
+    rte_ether_addr_copy(&temp_mac, &eth_hdr->dst_addr);
+
+    icmp_hdr->icmp_cksum = 0;
+    icmp_hdr->icmp_cksum = rte_raw_cksum(icmp_hdr, sizeof(struct rte_icmp_hdr));
+    ip_hdr->hdr_checksum = 0;
+    ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
+
+    txNum = rte_eth_tx_burst(port_id, 0, &pkt, 1);
+    return txNum;
 }
 
 static __rte_noreturn void NSTK_LcoreMain(void)
@@ -149,9 +149,9 @@ static __rte_noreturn void NSTK_LcoreMain(void)
         RTE_ETH_FOREACH_DEV(port)
         {
             struct rte_mbuf* bufs[NSTK_BURST_SIZE];
-            const uint16_t nb_rx = rte_eth_rx_burst(port, 0, bufs, NSTK_BURST_SIZE);
+            const uint16_t rxNum = rte_eth_rx_burst(port, 0, bufs, NSTK_BURST_SIZE);
 
-            if (unlikely(nb_rx == 0)) {
+            if (unlikely(rxNum == 0)) {
                 continue;
             }
 
@@ -160,13 +160,10 @@ static __rte_noreturn void NSTK_LcoreMain(void)
             uint16_t pkt_len     = rte_pktmbuf_pkt_len(pkt);
             NSTK_LOG_MBUF(pkt_data, pkt_len);
 
-            uint16_t nb_tx = 0;
-            NSTK_IcmpFastReply(bufs, nb_rx, port, &nb_tx);
+            uint16_t txNum = NSTK_IcmpFastReply(bufs, port);
 
-            if (unlikely(nb_tx < nb_rx)) {
-                for (uint16_t buf = nb_tx; buf < nb_rx; ++buf) {
-                    rte_pktmbuf_free(bufs[buf]);
-                }
+            if (unlikely(txNum < rxNum)) {
+                rte_pktmbuf_free(pkt);
             }
         }
     }

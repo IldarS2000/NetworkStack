@@ -2,8 +2,11 @@
 #include <stdarg.h>
 #include <time.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define NSTK_LOG_FILE "/var/log/nstk.log"
+
+static bool g_pktTraceEnable = true;
 
 void NSTK_WriteLog(const char* level, const char* func, int line, const char* format, ...)
 {
@@ -30,6 +33,9 @@ void NSTK_WriteLog(const char* level, const char* func, int line, const char* fo
 
 void NSTK_WriteMbuf(const char* level, const char* func, int line, uint8_t* pkt_data, uint16_t pkt_len)
 {
+    if (!g_pktTraceEnable) { 
+        return;
+    }
     FILE* fd = fopen(NSTK_LOG_FILE, "a");
     if (fd == NULL) {
         perror("Failed to open log file");

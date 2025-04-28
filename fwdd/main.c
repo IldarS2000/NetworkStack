@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <linux/if.h>
+#include <netdb.h>
 
 #include <rte_eal.h>
 #include <rte_ethdev.h>
@@ -9,6 +14,8 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 
+#include "arp.h"
+#include "icmp.h"
 #include "nstk_log.h"
 
 #define NSTK_RX_RING_SIZE 1024
@@ -19,6 +26,22 @@
 #define NSTK_BURST_SIZE 32
 #define NSTK_LCORE_NUM 1
 #define NSTK_MBUF_POOL_NAME "NSTK_MBUF_POOL"
+
+struct rte_ether_addr g_eth1MacAddr = {0};
+const uint32_t g_eth1IpAddr         = 3232235522; // 192.168.0.2
+
+static void NSTK_GetInterfaceMac(const char* ifName, struct rte_ether_addr* etherAddr)
+{
+    struct ifreq s;
+    int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+
+    strcpy(s.ifr_name, ifName);
+    if (ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
+        for (int i = 0; i < 6; ++i) {
+            etherAddr->addr_bytes[i] = s.ifr_addr.sa_data[i];
+        }
+    }
+}
 
 static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
 {
@@ -78,13 +101,12 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
         return ret;
     }
 
-    struct rte_ether_addr addr;
-    ret = rte_eth_macaddr_get(port, &addr);
-    if (ret != 0) {
-        return ret;
-    }
-    NSTK_LOG_INFO("Port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "\n", port,
-                  RTE_ETHER_ADDR_BYTES(&addr));
+    NSTK_GetInterfaceMac("eth1", &g_eth1MacAddr);
+    // ret = rte_eth_dev_default_mac_addr_set(port, &g_eth1MacAddr);
+    // if (ret != 0) {
+    //     return ret;
+    // }
+    NSTK_LOG_INFO("port %u, mac: %02X:%02X:%02X:%02X:%02X:%02X", port, RTE_ETHER_ADDR_BYTES(&g_eth1MacAddr));
 
     ret = rte_eth_promiscuous_enable(port);
     if (ret != 0) {
@@ -92,46 +114,6 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
     }
 
     return EXIT_SUCCESS;
-}
-
-static uint16_t NSTK_IcmpFastReply(struct rte_mbuf** pkts, uint16_t port_id)
-{
-    uint16_t txNum       = 0;
-    struct rte_mbuf* pkt = pkts[0];
-
-    struct rte_ether_hdr* eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
-    if (eth_hdr->ether_type != rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
-        return txNum;
-    }
-
-    struct rte_ipv4_hdr* ip_hdr = (struct rte_ipv4_hdr*)(eth_hdr + 1);
-    if (ip_hdr->next_proto_id != IPPROTO_ICMP) {
-        return txNum;
-    }
-
-    struct rte_icmp_hdr* icmp_hdr = (struct rte_icmp_hdr*)((uint8_t*)ip_hdr + sizeof(struct rte_ipv4_hdr));
-    if (icmp_hdr->icmp_type != RTE_IP_ICMP_ECHO_REQUEST) {
-        return txNum;
-    }
-
-    icmp_hdr->icmp_type = RTE_IP_ICMP_ECHO_REPLY;
-
-    uint32_t temp_ip = ip_hdr->src_addr;
-    ip_hdr->src_addr = ip_hdr->dst_addr;
-    ip_hdr->dst_addr = temp_ip;
-
-    struct rte_ether_addr temp_mac;
-    rte_ether_addr_copy(&eth_hdr->src_addr, &temp_mac);
-    rte_ether_addr_copy(&eth_hdr->dst_addr, &eth_hdr->src_addr);
-    rte_ether_addr_copy(&temp_mac, &eth_hdr->dst_addr);
-
-    icmp_hdr->icmp_cksum = 0;
-    icmp_hdr->icmp_cksum = rte_raw_cksum(icmp_hdr, sizeof(struct rte_icmp_hdr));
-    ip_hdr->hdr_checksum = 0;
-    ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
-
-    txNum = rte_eth_tx_burst(port_id, 0, &pkt, 1);
-    return txNum;
 }
 
 static __rte_noreturn void NSTK_LcoreMain(void)
@@ -160,6 +142,7 @@ static __rte_noreturn void NSTK_LcoreMain(void)
             uint16_t pkt_len     = rte_pktmbuf_pkt_len(pkt);
             NSTK_LOG_MBUF(pkt_data, pkt_len);
 
+            NSTK_ArpReply(pkt, port, &g_eth1MacAddr, g_eth1IpAddr);
             uint16_t txNum = NSTK_IcmpFastReply(bufs, port);
 
             if (unlikely(txNum < rxNum)) {

@@ -23,7 +23,7 @@
 
 #define NSTK_NUM_MBUFS 8191
 #define NSTK_MBUF_CACHE_SIZE 250
-#define NSTK_BURST_SIZE 32
+#define NSTK_BURST_SIZE 1
 #define NSTK_LCORE_NUM 1
 #define NSTK_MBUF_POOL_NAME "NSTK_MBUF_POOL"
 
@@ -102,10 +102,6 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
     }
 
     NSTK_GetInterfaceMac("eth1", &g_eth1MacAddr);
-    // ret = rte_eth_dev_default_mac_addr_set(port, &g_eth1MacAddr);
-    // if (ret != 0) {
-    //     return ret;
-    // }
     NSTK_LOG_INFO("port %u, mac: %02X:%02X:%02X:%02X:%02X:%02X", port, RTE_ETHER_ADDR_BYTES(&g_eth1MacAddr));
 
     ret = rte_eth_promiscuous_enable(port);
@@ -143,11 +139,7 @@ static __rte_noreturn void NSTK_LcoreMain(void)
             NSTK_LOG_MBUF(pkt_data, pkt_len);
 
             NSTK_ArpReply(pkt, port, &g_eth1MacAddr, g_eth1IpAddr);
-            uint16_t txNum = NSTK_IcmpFastReply(bufs, port);
-
-            if (unlikely(txNum < rxNum)) {
-                rte_pktmbuf_free(pkt);
-            }
+            NSTK_IcmpFastReply(bufs, port);
         }
     }
 }

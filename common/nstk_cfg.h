@@ -9,15 +9,13 @@
 #define NSTK_MODULE_POS 0
 #define NSTK_OPCODE_POS 1
 
-enum
-{
+enum {
     NSTK_MODULE_IP,
     NSTK_MODULE_IF,
     NSTK_MODULE_TRACE,
 } NSTK_Module;
 
-enum
-{
+enum {
     NSTK_OPCODE_IP_ADD,
     NSTK_OPCODE_IP_DEL,
     NSTK_OPCODE_IF_UP,

@@ -23,7 +23,7 @@
 
 #define NSTK_NUM_MBUFS 8191
 #define NSTK_MBUF_CACHE_SIZE 250
-#define NSTK_BURST_SIZE 1
+#define NSTK_BURST_SIZE 32
 #define NSTK_LCORE_NUM 1
 #define NSTK_MBUF_POOL_NAME "NSTK_MBUF_POOL"
 
@@ -151,6 +151,10 @@ int main(int argc, char* argv[])
         NSTK_LOG_ERROR("Failed to init EAL");
         return EXIT_FAILURE;
     }
+
+    // while (true) {
+    //     sleep(5);
+    // }
 
     argc -= ret;
     argv += ret;

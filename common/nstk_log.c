@@ -5,8 +5,9 @@
 #include <stdbool.h>
 
 #define NSTK_LOG_FILE "/var/log/nstk.log"
+#define NSTK_TRACE_FILE "/var/log/nstk_trace.log"
 
-static bool g_pktTraceEnable = true;
+static bool g_pktTraceDisable = true;
 
 void NSTK_WriteLog(const char* level, const char* func, int line, const char* format, ...)
 {
@@ -33,10 +34,10 @@ void NSTK_WriteLog(const char* level, const char* func, int line, const char* fo
 
 void NSTK_WriteMbuf(const char* level, const char* func, int line, uint8_t* pkt_data, uint16_t pkt_len)
 {
-    if (!g_pktTraceEnable) { 
+    if (g_pktTraceDisable) { 
         return;
     }
-    FILE* fd = fopen(NSTK_LOG_FILE, "a");
+    FILE* fd = fopen(NSTK_TRACE_FILE, "a");
     if (fd == NULL) {
         perror("Failed to open log file");
         return;
@@ -45,7 +46,7 @@ void NSTK_WriteMbuf(const char* level, const char* func, int line, uint8_t* pkt_
     time_t now   = time(NULL);
     struct tm* t = localtime(&now);
 
-    fprintf(fd, "[%04d-%02d-%02d %02d:%02d:%02d] [%s] [%s:%d] ", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+    fprintf(fd, "[%04d-%02d-%02d %02d:%02d:%02d][%s][%s:%d] ", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
             t->tm_hour, t->tm_min, t->tm_sec, level, func, line);
 
     for (uint16_t i = 0; i < pkt_len; ++i) {

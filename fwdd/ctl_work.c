@@ -5,37 +5,73 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include <rte_lcore.h>
 
+#include "if.h"
 #include "nstk_log.h"
 #include "nstk_cfg.h"
 
-typedef int (*NSTK_CommandHandler)(char* buff);
+#define NSTK_IP_STR_LEN 16
+
+typedef void (*NSTK_CommandHandler)(char* buff);
 
 typedef struct {
     int module;
     NSTK_CommandHandler handler;
 } NSTK_CommandRegistry;
 
-static int NSTK_HandleIpModule(char* buff)
-{
-    return EXIT_SUCCESS;
+static void NSTK_ExtractIpFromStr(const char *input, char *output, size_t size) {
+    char *slashPos = strchr(input, '/');
+
+    if (slashPos) {
+        size_t length = slashPos - input; 
+        if (length >= size) length = size - 1;
+        strncpy(output, input, length);
+        output[length] = '\0';
+    } else {
+        strncpy(output, input, size - 1); 
+        output[size - 1] = '\0';
+    }
 }
 
-static int NSTK_HandleIfModule(char* buff)
-{
-    return EXIT_SUCCESS;
+static uint32_t NSTK_IpStrToUint32(const char *ipStr) {
+    struct in_addr ip_addr = {0};
+    if (inet_pton(AF_INET, ipStr, &ip_addr) != 1) {
+        NSTK_LOG_ERROR("Invalid IP address format");
+        return 0;
+    }
+    return ntohl(ip_addr.s_addr);
 }
 
-static int NSTK_HandleTraceModule(char* buff)
+static void NSTK_HandleIpModule(char* buff)
 {
-    if (buff[1] == NSTK_OPCODE_TRACE_ENABLE) {
+    if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IP_ADD) {
+        char ipStr[NSTK_IP_STR_LEN] = {0};
+        NSTK_ExtractIpFromStr(buff + 2, ipStr, NSTK_IP_STR_LEN);
+        g_ifEntryEth1.ipAddr = NSTK_IpStrToUint32(ipStr);
+    } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IP_DEL) {
+        g_ifEntryEth1.ipAddr = 0;
+    }
+}
+
+static void NSTK_HandleIfModule(char* buff)
+{
+    if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IF_UP) {
+        g_ifEntryEth1.adminState = NSTK_IF_ADMIN_STATE_UP;
+    } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IF_DOWN) {
+        g_ifEntryEth1.adminState = NSTK_IF_ADMIN_STATE_DOWN;
+    }
+}
+
+static void NSTK_HandleTraceModule(char* buff)
+{
+    if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_TRACE_ENABLE) {
         g_pktTraceDisable = false;
-    } else if (buff[1] == NSTK_OPCODE_TRACE_DISABLE) {
+    } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_TRACE_DISABLE) {
         g_pktTraceDisable = true;
     }
-    return EXIT_SUCCESS;
 }
 
 static const NSTK_CommandRegistry g_subModule[] = {{NSTK_MODULE_IP, NSTK_HandleIpModule},
@@ -43,12 +79,12 @@ static const NSTK_CommandRegistry g_subModule[] = {{NSTK_MODULE_IP, NSTK_HandleI
                                                    {NSTK_MODULE_TRACE, NSTK_HandleTraceModule}};
 static const size_t g_subModuleNum              = sizeof(g_subModule) / sizeof(g_subModule[0]);
 
-int NSTK_ControlPlaneCfgWork(void* arg)
+int NSTK_LcoreCtlRun(void* arg)
 {
     NSTK_LOG_INFO("Lcore %u calculating control plane configuration", rte_lcore_id());
     int serverSock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverSock < 0) {
-        NSTK_LOG_ERROR("failed to create socket");
+        NSTK_LOG_ERROR("Failed to create socket");
         return EXIT_FAILURE;
     }
 
@@ -57,13 +93,13 @@ int NSTK_ControlPlaneCfgWork(void* arg)
 
     unlink(NSTK_CFG_SOCKET_PATH);
     if (bind(serverSock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) < 0) {
-        NSTK_LOG_ERROR("failed to bind socket");
+        NSTK_LOG_ERROR("Failed to bind socket");
         close(serverSock);
         return EXIT_FAILURE;
     }
 
     if (listen(serverSock, 1) < 0) {
-        NSTK_LOG_ERROR("failed to listen socket");
+        NSTK_LOG_ERROR("Failed to listen socket");
         close(serverSock);
         return EXIT_FAILURE;
     }
@@ -72,21 +108,21 @@ int NSTK_ControlPlaneCfgWork(void* arg)
     while (true) {
         int clientSock = accept(serverSock, NULL, NULL);
         if (clientSock < 0) {
-            NSTK_LOG_ERROR("failed to accept");
+            NSTK_LOG_ERROR("Failed to accept");
             continue;
         }
 
         char buffer[NSTK_CFG_BUF_SIZE];
         ssize_t bytesRecvNum = recv(clientSock, buffer, sizeof(buffer), 0);
         if (bytesRecvNum < 0) {
-            NSTK_LOG_ERROR("failed to recv");
+            NSTK_LOG_ERROR("Failed to recv");
             close(clientSock);
             continue;
         }
 
         buffer[bytesRecvNum] = '\0';
         for (size_t i = 0; i < g_subModuleNum; ++i) {
-            if (buffer[0] == g_subModule[i].module) {
+            if (buffer[NSTK_MODULE_POS] == g_subModule[i].module) {
                 g_subModule[i].handler(buffer);
             }
         }

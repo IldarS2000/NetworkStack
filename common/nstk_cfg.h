@@ -6,6 +6,9 @@
 #define NSTK_IF_NAME_LEN 32
 #define NSTK_CFG_BUF_SIZE 128
 
+#define NSTK_MODULE_POS 0
+#define NSTK_OPCODE_POS 1
+
 enum
 {
     NSTK_MODULE_IP,
@@ -26,10 +29,10 @@ enum
 typedef struct {
     char ipAddr[NSTK_IP_LEN];
     char ifName[NSTK_IF_NAME_LEN];
-} NSTK_IpEntry;
+} NSTK_IpEntryCfg;
 
 typedef struct {
     char ifName[NSTK_IF_NAME_LEN];
-} NSTK_IfEntry;
+} NSTK_IfEntryCfg;
 
 #endif // NSTK_CFG_H

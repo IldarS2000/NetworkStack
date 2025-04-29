@@ -29,7 +29,7 @@ static int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
 {
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) {
-        printf("failed to create socket\n");
+        printf("Failed to create socket\n");
         return EXIT_FAILURE;
     }
 
@@ -37,13 +37,13 @@ static int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
     strncpy(addr.sun_path, NSTK_CFG_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     if (connect(sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) < 0) {
-        printf("failed to connect\n");
+        printf("Failed to connect\n");
         close(sock);
         return EXIT_FAILURE;
     }
 
     if (send(sock, buffer, bufSize, 0) < 0) {
-        printf("failed to send\n");
+        printf("Failed to send\n");
         close(sock);
         return EXIT_FAILURE;
     }
@@ -52,38 +52,38 @@ static int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
     return EXIT_SUCCESS;
 }
 
-static int NSTK_SerializeIpEntry(const NSTK_IpEntry* ipEntry, char* buffer, size_t bufSize)
+static int NSTK_SerializeIpEntry(const NSTK_IpEntryCfg* ipEntry, char* buffer, size_t bufSize)
 {
-    if (bufSize < sizeof(NSTK_IpEntry)) {
+    if (bufSize < sizeof(NSTK_IpEntryCfg)) {
         printf("Buffer too small\n");
         return EXIT_FAILURE;
     }
-    memcpy(buffer + 2, ipEntry, sizeof(NSTK_IpEntry));
+    memcpy(buffer + 2, ipEntry, sizeof(NSTK_IpEntryCfg));
     return EXIT_SUCCESS;
 }
 
-static int NSTK_SerializeIfEntry(const NSTK_IfEntry* ifEntry, char* buffer, size_t bufSize)
+static int NSTK_SerializeIfEntry(const NSTK_IfEntryCfg* ifEntry, char* buffer, size_t bufSize)
 {
-    if (bufSize < sizeof(NSTK_IfEntry)) {
+    if (bufSize < sizeof(NSTK_IfEntryCfg)) {
         printf("Buffer too small\n");
         return EXIT_FAILURE;
     }
-    memcpy(buffer + 2, ifEntry, sizeof(NSTK_IfEntry));
+    memcpy(buffer + 2, ifEntry, sizeof(NSTK_IfEntryCfg));
     return EXIT_SUCCESS;
 }
 
 // TODO add strict checks about arguments
 static int NSTK_HandleIpModule(int argc, char* argv[])
 {
-    NSTK_IpEntry ipEntry           = {0};
+    NSTK_IpEntryCfg ipEntry           = {0};
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
-    buffer[0]                      = NSTK_MODULE_IP;
+    buffer[NSTK_MODULE_POS]        = NSTK_MODULE_IP;
     if (strcmp(argv[2], "add") == 0) {
-        buffer[1] = NSTK_OPCODE_IP_ADD;
+        buffer[NSTK_OPCODE_POS] = NSTK_OPCODE_IP_ADD;
         (void)strcpy(ipEntry.ipAddr, argv[3]);
         (void)strcpy(ipEntry.ifName, argv[4]);
     } else if (strcmp(argv[2], "del") == 0) {
-        buffer[1] = NSTK_OPCODE_IP_DEL;
+        buffer[NSTK_OPCODE_POS] = NSTK_OPCODE_IP_DEL;
         (void)strcpy(ipEntry.ipAddr, argv[3]);
         (void)strcpy(ipEntry.ifName, argv[4]);
     } else {
@@ -105,14 +105,14 @@ static int NSTK_HandleIpModule(int argc, char* argv[])
 // TODO add strict checks about arguments
 static int NSTK_HandleIfModule(int argc, char* argv[])
 {
-    NSTK_IfEntry ifEntry           = {0};
+    NSTK_IfEntryCfg ifEntry           = {0};
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
-    buffer[0]                      = NSTK_MODULE_IF;
+    buffer[NSTK_MODULE_POS]        = NSTK_MODULE_IF;
     if (strcmp(argv[2], "up") == 0) {
-        buffer[1] = NSTK_OPCODE_IF_UP;
+        buffer[NSTK_OPCODE_POS] = NSTK_OPCODE_IF_UP;
         (void)strcpy(ifEntry.ifName, argv[3]);
     } else if (strcmp(argv[2], "down") == 0) {
-        buffer[1] = NSTK_OPCODE_IF_DOWN;
+        buffer[NSTK_OPCODE_POS] = NSTK_OPCODE_IF_DOWN;
         (void)strcpy(ifEntry.ifName, argv[3]);
     } else {
         NSTK_PrintHelp();
@@ -134,11 +134,11 @@ static int NSTK_HandleIfModule(int argc, char* argv[])
 static int NSTK_HandleTraceModule(int argc, char* argv[])
 {
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
-    buffer[0]                      = NSTK_MODULE_TRACE;
+    buffer[NSTK_MODULE_POS]        = NSTK_MODULE_TRACE;
     if (strcmp(argv[2], "enable") == 0) {
-        buffer[1] = NSTK_OPCODE_TRACE_ENABLE;
+        buffer[NSTK_OPCODE_POS] = NSTK_OPCODE_TRACE_ENABLE;
     } else if (strcmp(argv[2], "disable") == 0) {
-        buffer[1] = NSTK_OPCODE_TRACE_DISABLE;
+        buffer[NSTK_OPCODE_POS] = NSTK_OPCODE_TRACE_DISABLE;
     } else {
         NSTK_PrintHelp();
         return EXIT_FAILURE;

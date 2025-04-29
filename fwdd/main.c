@@ -17,6 +17,7 @@
 #include "arp.h"
 #include "icmp.h"
 #include "nstk_log.h"
+#include "control_plane.h"
 
 #define NSTK_RX_RING_SIZE 1024
 #define NSTK_TX_RING_SIZE 1024
@@ -24,7 +25,9 @@
 #define NSTK_NUM_MBUFS 8191
 #define NSTK_MBUF_CACHE_SIZE 250
 #define NSTK_BURST_SIZE 32
-#define NSTK_LCORE_NUM 1
+#define NSTK_LCORE_NUM 2
+#define NSTK_PKT_LCORE 0
+#define NSTK_CFG_LCORE 1
 #define NSTK_MBUF_POOL_NAME "NSTK_MBUF_POOL"
 
 struct rte_ether_addr g_eth1MacAddr = {0};
@@ -114,6 +117,7 @@ static int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
 
 static __rte_noreturn void NSTK_LcoreMain(void)
 {
+    NSTK_LOG_INFO("Lcore %u forwarding packets", rte_lcore_id());
     uint16_t port = 0;
     RTE_ETH_FOREACH_DEV(port)
     {
@@ -121,7 +125,6 @@ static __rte_noreturn void NSTK_LcoreMain(void)
             NSTK_LOG_WARN("Port %u is on remote NUMA node to polling thread. Performance will not be optimal", port);
         }
     }
-    NSTK_LOG_INFO("Core %u forwarding packets", rte_lcore_id());
 
     for (;;) {
         RTE_ETH_FOREACH_DEV(port)
@@ -151,10 +154,6 @@ int main(int argc, char* argv[])
         NSTK_LOG_ERROR("Failed to init EAL");
         return EXIT_FAILURE;
     }
-
-    // while (true) {
-    //     sleep(5);
-    // }
 
     argc -= ret;
     argv += ret;
@@ -187,7 +186,10 @@ int main(int argc, char* argv[])
         NSTK_LOG_WARN("Too many lcores enabled. Only %u used", NSTK_LCORE_NUM);
     }
 
+    rte_eal_remote_launch(NSTK_ControlPlaneCfgWork, NULL, NSTK_CFG_LCORE);
+
     NSTK_LcoreMain();
+    rte_eal_mp_wait_lcore();
 
     rte_eal_cleanup();
     return EXIT_SUCCESS;

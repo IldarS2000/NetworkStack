@@ -1,6 +1,8 @@
 #ifndef NSTK_LOG_H
 #define NSTK_LOG_H
 
+extern bool g_pktTraceDisable;
+
 void NSTK_WriteLog(const char* level, const char* func, int line, const char* format, ...);
 void NSTK_WriteMbuf(const char* level, const char* func, int line, uint8_t* pkt_data, uint16_t pkt_len);
 

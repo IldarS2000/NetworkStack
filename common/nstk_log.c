@@ -7,7 +7,7 @@
 #define NSTK_LOG_FILE "/var/log/nstk.log"
 #define NSTK_TRACE_FILE "/var/log/nstk_trace.log"
 
-static bool g_pktTraceDisable = true;
+bool g_pktTraceDisable = true;
 
 void NSTK_WriteLog(const char* level, const char* func, int line, const char* format, ...)
 {

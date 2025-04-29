@@ -5,36 +5,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define NSTK_CFG_SOCKET_PATH "/tmp/nstk_cfg_socket"
-#define NSTK_IP_LEN 32
-#define NSTK_IF_NAME_LEN 32
-#define NSTK_CFG_BUF_SIZE 128
-
-enum
-{
-    NSTK_MODULE_IP,
-    NSTK_MODULE_IF,
-    NSTK_MODULE_TRACE,
-} NSTK_Module;
-
-enum
-{
-    NSTK_OPCODE_IP_ADD,
-    NSTK_OPCODE_IP_DEL,
-    NSTK_OPCODE_IF_UP,
-    NSTK_OPCODE_IF_DOWN,
-    NSTK_OPCODE_TRACE_ENABLE,
-    NSTK_OPCODE_TRACE_DISABLE,
-} NSTK_ModuleOpcode;
-
-typedef struct {
-    char ipAddr[NSTK_IP_LEN];
-    char ifName[NSTK_IF_NAME_LEN];
-} NSTK_IpEntry;
-
-typedef struct {
-    char ifName[NSTK_IF_NAME_LEN];
-} NSTK_IfEntry;
+#include "nstk_cfg.h"
 
 typedef int (*NSTK_CommandHandler)(int argc, char* argv[]);
 
@@ -43,7 +14,7 @@ typedef struct {
     NSTK_CommandHandler handler;
 } NSTK_CommandRegistry;
 
-void NSTK_PrintHelp()
+static void NSTK_PrintHelp()
 {
     printf("Usage:\n");
     printf("  nstk ip add x.x.x.x/x DEVICE_NAME\n");
@@ -54,7 +25,7 @@ void NSTK_PrintHelp()
     printf("  nstk trace disable\n");
 }
 
-int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
+static int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
 {
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) {
@@ -81,7 +52,7 @@ int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
     return EXIT_SUCCESS;
 }
 
-int NSTK_SerializeIpEntry(const NSTK_IpEntry* ipEntry, char* buffer, size_t bufSize)
+static int NSTK_SerializeIpEntry(const NSTK_IpEntry* ipEntry, char* buffer, size_t bufSize)
 {
     if (bufSize < sizeof(NSTK_IpEntry)) {
         printf("Buffer too small\n");
@@ -91,7 +62,7 @@ int NSTK_SerializeIpEntry(const NSTK_IpEntry* ipEntry, char* buffer, size_t bufS
     return EXIT_SUCCESS;
 }
 
-int NSTK_SerializeIfEntry(const NSTK_IfEntry* ifEntry, char* buffer, size_t bufSize)
+static int NSTK_SerializeIfEntry(const NSTK_IfEntry* ifEntry, char* buffer, size_t bufSize)
 {
     if (bufSize < sizeof(NSTK_IfEntry)) {
         printf("Buffer too small\n");
@@ -102,7 +73,7 @@ int NSTK_SerializeIfEntry(const NSTK_IfEntry* ifEntry, char* buffer, size_t bufS
 }
 
 // TODO add strict checks about arguments
-int NSTK_HandleIpModule(int argc, char* argv[])
+static int NSTK_HandleIpModule(int argc, char* argv[])
 {
     NSTK_IpEntry ipEntry           = {0};
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
@@ -132,7 +103,7 @@ int NSTK_HandleIpModule(int argc, char* argv[])
 }
 
 // TODO add strict checks about arguments
-int NSTK_HandleIfModule(int argc, char* argv[])
+static int NSTK_HandleIfModule(int argc, char* argv[])
 {
     NSTK_IfEntry ifEntry           = {0};
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
@@ -160,7 +131,7 @@ int NSTK_HandleIfModule(int argc, char* argv[])
 }
 
 // TODO add strict checks about arguments
-int NSTK_HandleTraceModule(int argc, char* argv[])
+static int NSTK_HandleTraceModule(int argc, char* argv[])
 {
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
     buffer[0]                      = NSTK_MODULE_TRACE;
@@ -180,10 +151,10 @@ int NSTK_HandleTraceModule(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-NSTK_CommandRegistry g_subModule[] = {{"ip", NSTK_HandleIpModule},
-                                      {"if", NSTK_HandleIfModule},
-                                      {"trace", NSTK_HandleTraceModule}};
-const size_t g_subModuleNum        = sizeof(g_subModule) / sizeof(g_subModule[0]);
+static const NSTK_CommandRegistry g_subModule[] = {{"ip", NSTK_HandleIpModule},
+                                                   {"if", NSTK_HandleIfModule},
+                                                   {"trace", NSTK_HandleTraceModule}};
+static const size_t g_subModuleNum              = sizeof(g_subModule) / sizeof(g_subModule[0]);
 
 int main(int argc, char* argv[])
 {

@@ -17,12 +17,12 @@ typedef struct {
 static void NSTK_PrintHelp()
 {
     printf("Usage:\n");
-    printf("  nstk ip add x.x.x.x/x DEVICE_NAME\n");
-    printf("  nstk ip del x.x.x.x/x DEVICE_NAME\n");
-    printf("  nstk if down DEVICE_NAME\n");
-    printf("  nstk if up DEVICE_NAME\n");
-    printf("  nstk trace enable\n");
-    printf("  nstk trace disable\n");
+    printf("  fwdctl ip add x.x.x.x/x DEVICE_NAME\n");
+    printf("  fwdctl ip del x.x.x.x/x DEVICE_NAME\n");
+    printf("  fwdctl if down DEVICE_NAME\n");
+    printf("  fwdctl if up DEVICE_NAME\n");
+    printf("  fwdctl trace enable\n");
+    printf("  fwdctl trace disable\n");
 }
 
 static int NSTK_SendCfgToCp(char* buffer, size_t bufSize)
@@ -161,6 +161,10 @@ int main(int argc, char* argv[])
     if (argc < 2) {
         NSTK_PrintHelp();
         return EXIT_FAILURE;
+    }
+    if (strcmp(argv[1], "help") == 0) {
+        NSTK_PrintHelp();
+        return 0;
     }
 
     for (size_t i = 0; i < g_subModuleNum; ++i) {

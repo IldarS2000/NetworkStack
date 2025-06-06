@@ -4,6 +4,7 @@ project(fwdd)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O3 -march=native -ffast-math")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O0 -g -DDEBUG -march=native -ffast-math")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(DPDK REQUIRED libdpdk)

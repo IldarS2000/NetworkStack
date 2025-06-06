@@ -29,10 +29,8 @@ static void NSTK_ExtractIpFromStr(const char *input, char *output, size_t size) 
         size_t length = slashPos - input; 
         if (length >= size) length = size - 1;
         strncpy(output, input, length);
-        output[length] = '\0';
     } else {
         strncpy(output, input, size - 1); 
-        output[size - 1] = '\0';
     }
 }
 
@@ -69,46 +67,54 @@ static void NSTK_HandleIpModule(char* buff)
     if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IP_ADD) {
         char ipStr[NSTK_IP_STR_LEN] = {0};
         NSTK_ExtractIpFromStr(buff + 2, ipStr, NSTK_IP_STR_LEN);
-        char ifStr[NSTK_IF_NAME_LEN] = {0};
-        NSTK_ExtractIpDevNameFromStr(buff, ifStr);
+        g_ifTbl.ifEntries[0].ipAddr = NSTK_IpStrToUint32(ipStr);
 
-        for (size_t port = 0; port <g_ifTbl.size; ++port) {
-            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
-                g_ifTbl.ifEntries[port].ipAddr = NSTK_IpStrToUint32(ipStr);
-            }
-        }
+        // char ifStr[NSTK_IF_NAME_LEN] = {0};
+        // NSTK_ExtractIpDevNameFromStr(buff + 2, ifStr);
+
+        // for (size_t port = 0; port <g_ifTbl.size; ++port) {
+        //     if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+        //         g_ifTbl.ifEntries[port].ipAddr = NSTK_IpStrToUint32(ipStr);
+        //     }
+        // }
     } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IP_DEL) {
-        char ifStr[NSTK_IF_NAME_LEN] = {0};
-        NSTK_ExtractIpDevNameFromStr(buff, ifStr);
+        g_ifTbl.ifEntries[0].ipAddr = 0;
+
+        // char ifStr[NSTK_IF_NAME_LEN] = {0};
+        // NSTK_ExtractIpDevNameFromStr(buff + 2, ifStr);
         
-        for (size_t port = 0; port <g_ifTbl.size; ++port) {
-            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
-                g_ifTbl.ifEntries[port].ipAddr = 0;
-            }
-        }
+        // for (size_t port = 0; port <g_ifTbl.size; ++port) {
+        //     if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+        //         g_ifTbl.ifEntries[port].ipAddr = 0;
+        //     }
+        // }
     }
 }
 
 static void NSTK_HandleIfModule(char* buff)
 {
     if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IF_UP) {
-        char ifStr[NSTK_IF_NAME_LEN] = {0};
-        NSTK_ExtractIfStateDevNameFromStr(buff + 2, ifStr);
+        g_ifTbl.ifEntries[0].adminState = NSTK_IF_ADMIN_STATE_UP;
 
-        for (size_t port = 0; port <g_ifTbl.size; ++port) {
-            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
-                g_ifTbl.ifEntries[port].adminState = NSTK_IF_ADMIN_STATE_UP;
-            }
-        }
+        // char ifStr[NSTK_IF_NAME_LEN] = {0};
+        // NSTK_ExtractIfStateDevNameFromStr(buff + 2, ifStr);
+
+        // for (size_t port = 0; port <g_ifTbl.size; ++port) {
+        //     if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+        //         g_ifTbl.ifEntries[port].adminState = NSTK_IF_ADMIN_STATE_UP;
+        //     }
+        // }
     } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IF_DOWN) {
-        char ifStr[NSTK_IF_NAME_LEN] = {0};
-        NSTK_ExtractIfStateDevNameFromStr(buff + 2, ifStr);
+        g_ifTbl.ifEntries[0].adminState = NSTK_IF_ADMIN_STATE_DOWN;
+        
+        // char ifStr[NSTK_IF_NAME_LEN] = {0};
+        // NSTK_ExtractIfStateDevNameFromStr(buff + 2, ifStr);
 
-        for (size_t port = 0; port <g_ifTbl.size; ++port) {
-            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
-                g_ifTbl.ifEntries[port].adminState = NSTK_IF_ADMIN_STATE_DOWN;
-            }
-        }
+        // for (size_t port = 0; port <g_ifTbl.size; ++port) {
+        //     if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+        //         g_ifTbl.ifEntries[port].adminState = NSTK_IF_ADMIN_STATE_DOWN;
+        //     }
+        // }
     }
 }
 
@@ -128,7 +134,7 @@ static const size_t g_subModuleNum              = sizeof(g_subModule) / sizeof(g
 
 int NSTK_LcoreCtlRun(void* arg)
 {
-    NSTK_LOG_INFO("Lcore %u calculating control plane configuration", rte_lcore_id());
+    NSTK_LOG_INFO("Lcore %u -- control plane", rte_lcore_id());
     int serverSock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverSock < 0) {
         NSTK_LOG_ERROR("Failed to create socket");

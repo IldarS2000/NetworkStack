@@ -24,7 +24,7 @@
 
 void NSTK_LcoreFwdRun()
 {
-    NSTK_LOG_INFO("Lcore %u forwarding packets", rte_lcore_id());
+    NSTK_LOG_INFO("Lcore %u -- forwarding plane", rte_lcore_id());
     uint16_t port = 0;
     RTE_ETH_FOREACH_DEV(port)
     {

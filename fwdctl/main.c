@@ -75,7 +75,7 @@ static int NSTK_SerializeIfEntry(const NSTK_IfEntryCfg* ifEntry, char* buffer, s
 // TODO add strict checks about arguments
 static int NSTK_HandleIpModule(int argc, char* argv[])
 {
-    NSTK_IpEntryCfg ipEntry           = {0};
+    NSTK_IpEntryCfg ipEntry        = {0};
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
     buffer[NSTK_MODULE_POS]        = NSTK_MODULE_IP;
     if (strcmp(argv[2], "add") == 0) {
@@ -105,7 +105,7 @@ static int NSTK_HandleIpModule(int argc, char* argv[])
 // TODO add strict checks about arguments
 static int NSTK_HandleIfModule(int argc, char* argv[])
 {
-    NSTK_IfEntryCfg ifEntry           = {0};
+    NSTK_IfEntryCfg ifEntry        = {0};
     char buffer[NSTK_CFG_BUF_SIZE] = {0};
     buffer[NSTK_MODULE_POS]        = NSTK_MODULE_IF;
     if (strcmp(argv[2], "up") == 0) {

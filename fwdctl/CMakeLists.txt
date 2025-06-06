@@ -3,7 +3,8 @@ project(fwdctl)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O2 -march=native -ffast-math")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O3 -march=native -ffast-math")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O0 -g -DDEBUG -march=native -ffast-math")
 
 aux_source_directory(. SOURCES)
 aux_source_directory(../common SOURCES)

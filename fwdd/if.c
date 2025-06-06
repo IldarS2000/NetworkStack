@@ -42,17 +42,17 @@ static void NSTK_PrintPortCfgEntry(const NSTK_IfEntry* entry)
     NSTK_LOG_INFO("-------------");
     NSTK_LOG_INFO("Port ID: %u", entry->portId);
     NSTK_LOG_INFO("Interface Name: %s", entry->ifName);
-    NSTK_LOG_INFO("MTU: %u\n", entry->mtu);
+    NSTK_LOG_INFO("MTU: %u", entry->mtu);
     NSTK_LOG_INFO("MAC: %02X:%02X:%02X:%02X:%02X:%02X", entry->macAddr.addr_bytes[0], entry->macAddr.addr_bytes[1],
                   entry->macAddr.addr_bytes[2], entry->macAddr.addr_bytes[3], entry->macAddr.addr_bytes[4],
                   entry->macAddr.addr_bytes[5]);
     NSTK_LOG_INFO("IPv4 Address: %u", entry->ipAddr);
     NSTK_LOG_INFO("Admin State: %s", entry->adminState ? "Up" : "Down");
-    NSTK_LOG_INFO("-------------");
 }
 
 static int NSTK_ParsePortCfgJson(const char* jsonStr)
 {
+    NSTK_LOG_INFO("Parse port cfg");
     cJSON* root = cJSON_Parse(jsonStr);
     if (!root || !cJSON_IsArray(root)) {
         NSTK_LOG_ERROR("Invalid json format of file: %s", NSTK_PORT_CFG_JSON);
@@ -80,6 +80,7 @@ static int NSTK_ParsePortCfgJson(const char* jsonStr)
 
         NSTK_PrintPortCfgEntry(&g_ifTbl.ifEntries[portId]);
     }
+    NSTK_LOG_INFO("-------------");
 
     cJSON_Delete(root);
     return EXIT_SUCCESS;
@@ -88,6 +89,7 @@ static int NSTK_ParsePortCfgJson(const char* jsonStr)
 
 int NSTK_ReadPortConfig()
 {
+    NSTK_LOG_INFO("Read port cfg");
     FILE* file = fopen(NSTK_PORT_CFG_JSON, "r");
     if (file == NULL) {
         NSTK_LOG_ERROR("Failed to open file: %s", NSTK_PORT_CFG_JSON);

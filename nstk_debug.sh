@@ -16,3 +16,4 @@ fwdctl trace enable; tail -F /var/log/nstk_trace.log
 fwdctl trace disable
 cat /var/log/nstk.log
 gdb attach $(pidof fwdd)
+tcpdump -i eth1 -e -xx

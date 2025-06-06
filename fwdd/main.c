@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     argc -= ret;
     argv += ret;
 
-    uint16_t portNum = rte_eth_dev_count_avail();
+    const uint16_t portNum = rte_eth_dev_count_avail();
     if (portNum == 0) {
         NSTK_LOG_ERROR("Error, there is no ports available", portNum);
         return EXIT_FAILURE;

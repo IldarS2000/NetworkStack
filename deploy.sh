@@ -52,6 +52,12 @@ function create_network()
     ip addr add 192.168.0.1/24 dev ${bridge_name}
 }
 
+function connect_network()
+{
+    docker network connect ${NETWORK1} ${CONTAINER}
+    docker exec -it ${CONTAINER} bash -c "ifconfig eth1 0"
+}
+
 function run_container()
 {
     echo "Run container"
@@ -63,8 +69,6 @@ function run_container()
         -v /mnt/huge:/mnt/huge \
         -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
         --name ${CONTAINER} ${IMAGE}
-    docker network connect ${NETWORK1} ${CONTAINER}
-    docker exec -it ${CONTAINER} bash -c "ifconfig eth1 0"
 }
 
 setup_hugepages
@@ -72,3 +76,4 @@ build_docker_image
 delete_container
 create_network
 run_container
+connect_network

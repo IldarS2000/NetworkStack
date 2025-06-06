@@ -4,6 +4,6 @@
 #include <stdint.h>
 #include <rte_mbuf.h>
 
-void NSTK_IcmpFastReply(struct rte_mbuf** pkts, uint16_t port_id);
+int NSTK_IcmpReply(struct rte_mbuf** pkts, uint16_t port);
 
 #endif // NSTK_ICMP_H

@@ -5,7 +5,6 @@
 #include <rte_mbuf.h>
 #include <rte_ether.h>
 
-void NSTK_ArpReply(struct rte_mbuf* mbuf, uint16_t port_id, struct rte_ether_addr* selfMacAddr,
-                   uint32_t selfIpAddr);
+int NSTK_ArpReply(struct rte_mbuf** pkts, uint16_t port);
 
 #endif // NSTK_ARP_H

@@ -9,25 +9,34 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 
+#include "if.h"
 #include "nstk_log.h"
 
-void NSTK_IcmpFastReply(struct rte_mbuf** pkts, uint16_t port_id)
+int NSTK_IcmpReply(struct rte_mbuf** pkts, uint16_t port)
 {
     struct rte_mbuf* pkt = pkts[0];
 
     struct rte_ether_hdr* eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
     if (eth_hdr->ether_type != rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
-        return;
+        return 0;
+    }
+
+    if (memcmp(&eth_hdr->dst_addr, &g_ifTbl.ifEntries[port].macAddr, sizeof(struct rte_ether_addr)) != 0) {
+        return 0;
     }
 
     struct rte_ipv4_hdr* ip_hdr = (struct rte_ipv4_hdr*)(eth_hdr + 1);
     if (ip_hdr->next_proto_id != IPPROTO_ICMP) {
-        return;
+        return 0;
+    }
+
+    if (ntohl(ip_hdr->dst_addr) != g_ifTbl.ifEntries[port].ipAddr) {
+        return 0;
     }
 
     struct rte_icmp_hdr* icmp_hdr = (struct rte_icmp_hdr*)((uint8_t*)ip_hdr + sizeof(struct rte_ipv4_hdr));
     if (icmp_hdr->icmp_type != RTE_IP_ICMP_ECHO_REQUEST) {
-        return;
+        return 0;
     }
 
     struct rte_ether_addr temp_mac;
@@ -49,9 +58,6 @@ void NSTK_IcmpFastReply(struct rte_mbuf** pkts, uint16_t port_id)
     cksum = (cksum & 0xffff) + (cksum >> 16);
     icmp_hdr->icmp_cksum = ~cksum;
 
-    uint16_t txNum = rte_eth_tx_burst(port_id, 0, &pkt, 1);
-    if (unlikely(txNum == 0)) {
-        NSTK_LOG_ERROR("failed to transmit icmp reply packet");
-        rte_pktmbuf_free(pkt);
-    }
+    uint16_t txNum = rte_eth_tx_burst(port, 0, &pkt, 1);
+    return txNum;
 }

@@ -36,9 +36,9 @@ void NSTK_LcoreFwdRun()
     for (;;) {
         RTE_ETH_FOREACH_DEV(port)
         {
-            struct rte_mbuf* bufs[NSTK_BURST_SIZE];
-            const uint16_t rxNum = rte_eth_rx_burst(port, 0, bufs, NSTK_BURST_SIZE);
-            struct rte_mbuf* pkt = bufs[0];
+            struct rte_mbuf* pkts[NSTK_BURST_SIZE];
+            const uint16_t rxNum = rte_eth_rx_burst(port, 0, pkts, NSTK_BURST_SIZE);
+            struct rte_mbuf* pkt = pkts[0];
 
             if (unlikely(rxNum == 0)) {
                 continue;
@@ -49,12 +49,15 @@ void NSTK_LcoreFwdRun()
                 continue;
             }
 
-            uint8_t* pkt_data = rte_pktmbuf_mtod(pkt, uint8_t*);
-            uint16_t pkt_len  = rte_pktmbuf_pkt_len(pkt);
-            NSTK_TRACE_MBUF(pkt_data, pkt_len);
+            uint8_t* pktPayload = rte_pktmbuf_mtod(pkt, uint8_t*);
+            uint16_t pktLen  = rte_pktmbuf_pkt_len(pkt);
+            NSTK_TRACE_MBUF(pktPayload, pktLen);
 
-            NSTK_ArpReply(pkt, port, &g_ifTbl.ifEntries[port].macAddr, g_ifTbl.ifEntries[port].ipAddr);
-            NSTK_IcmpFastReply(bufs, port);
+            int txNum = NSTK_ArpReply(pkts, port);
+            txNum += NSTK_IcmpReply(pkts, port);
+            if (unlikely(txNum == 0)) {
+                rte_pktmbuf_free(pkt);
+            }
         }
     }
 }

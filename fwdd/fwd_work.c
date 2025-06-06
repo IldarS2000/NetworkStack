@@ -44,7 +44,7 @@ void NSTK_LcoreFwdRun()
                 continue;
             }
 
-            if (g_ifEntryEth1.adminState != NSTK_IF_ADMIN_STATE_UP) {
+            if (g_ifTbl.ifEntries[port].adminState != NSTK_IF_ADMIN_STATE_UP) {
                 rte_pktmbuf_free(pkt);
                 continue;
             }
@@ -53,7 +53,7 @@ void NSTK_LcoreFwdRun()
             uint16_t pkt_len  = rte_pktmbuf_pkt_len(pkt);
             NSTK_TRACE_MBUF(pkt_data, pkt_len);
 
-            NSTK_ArpReply(pkt, port, &g_ifEntryEth1.macAddr, g_ifEntryEth1.ipAddr);
+            NSTK_ArpReply(pkt, port, &g_ifTbl.ifEntries[port].macAddr, g_ifTbl.ifEntries[port].ipAddr);
             NSTK_IcmpFastReply(bufs, port);
         }
     }

@@ -18,6 +18,7 @@
 #define NSTK_IF_ADMIN_STATE_UP 1
 #define NSTK_IF_ADMIN_STATE_DOWN 0
 #define NSTK_IF_DEFAULT_MTU 1500
+#define NSTK_IF_TBL_SIZE 32
 
 typedef struct
 {
@@ -29,8 +30,15 @@ typedef struct
     bool adminState;
 } NSTK_IfEntry;
 
-extern NSTK_IfEntry g_ifEntryEth1;
+typedef struct
+{
+    NSTK_IfEntry ifEntries[NSTK_IF_TBL_SIZE];
+    size_t size;
+} NSTK_IfTbl;
 
+extern NSTK_IfTbl g_ifTbl;
+
+int NSTK_ReadPortConfig();
 int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool);
 
 #endif // NSTK_IF_H

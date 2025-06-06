@@ -21,11 +21,96 @@
 #include "if.h"
 #include "nstk_log.h"
 
-NSTK_IfEntry g_ifEntryEth1 = {
-    .ifName = "eth1",
-    .adminState = NSTK_IF_ADMIN_STATE_UP,
-    .mtu = NSTK_IF_DEFAULT_MTU
-};
+#define NSTK_PORT_CFG_JSON "/run/nstk/port_cfg.json"
+#define NSTK_PORT_CFG_FIELD_PORTID "portId"
+#define NSTK_PORT_CFG_FIELD_IFNAME "ifName"
+#define NSTK_PORT_CFG_FIELD_MTU "mtu"
+#define NSTK_PORT_CFG_FIELD_IP_ADDR "ipAddr"
+#define NSTK_PORT_CFG_FIELD_ADMIN_STATE "adminState"
+#define NSTK_PORT_CFG_FIELD_MAC_ADDR "macAddr"
+
+NSTK_IfTbl g_ifTbl = {0};
+
+static bool NSTK_ParseMacStr(const char* mac_str, struct rte_ether_addr* mac)
+{
+    return sscanf(mac_str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac->addr_bytes[0], &mac->addr_bytes[1],
+                  &mac->addr_bytes[2], &mac->addr_bytes[3], &mac->addr_bytes[4], &mac->addr_bytes[5]) == 6;
+}
+
+static void NSTK_PrintPortCfgEntry(const NSTK_IfEntry* entry)
+{
+    NSTK_LOG_INFO("-------------");
+    NSTK_LOG_INFO("Port ID: %u", entry->portId);
+    NSTK_LOG_INFO("Interface Name: %s", entry->ifName);
+    NSTK_LOG_INFO("MTU: %u\n", entry->mtu);
+    NSTK_LOG_INFO("MAC: %02X:%02X:%02X:%02X:%02X:%02X", entry->macAddr.addr_bytes[0], entry->macAddr.addr_bytes[1],
+                  entry->macAddr.addr_bytes[2], entry->macAddr.addr_bytes[3], entry->macAddr.addr_bytes[4],
+                  entry->macAddr.addr_bytes[5]);
+    NSTK_LOG_INFO("IPv4 Address: %u", entry->ipAddr);
+    NSTK_LOG_INFO("Admin State: %s", entry->adminState ? "Up" : "Down");
+    NSTK_LOG_INFO("-------------");
+}
+
+static int NSTK_ParsePortCfgJson(const char* jsonStr)
+{
+    cJSON* root = cJSON_Parse(jsonStr);
+    if (!root || !cJSON_IsArray(root)) {
+        NSTK_LOG_ERROR("Invalid json format of file: %s", NSTK_PORT_CFG_JSON);
+        return EXIT_FAILURE;
+    }
+
+    int count = cJSON_GetArraySize(root);
+    for (int portId = 0; portId < count && portId < NSTK_IF_TBL_SIZE; ++portId) {
+        ++g_ifTbl.size;
+        cJSON* item = cJSON_GetArrayItem(root, portId);
+
+        g_ifTbl.ifEntries[portId].portId = cJSON_GetObjectItem(item, NSTK_PORT_CFG_FIELD_PORTID)->valueint;
+        strncpy(g_ifTbl.ifEntries[portId].ifName, cJSON_GetObjectItem(item, NSTK_PORT_CFG_FIELD_IFNAME)->valuestring,
+                NSTK_IF_NAME_LEN - 1);
+        g_ifTbl.ifEntries[portId].ifName[NSTK_IF_NAME_LEN - 1] = '\0';
+        g_ifTbl.ifEntries[portId].mtu        = cJSON_GetObjectItem(item, NSTK_PORT_CFG_FIELD_MTU)->valueint;
+        g_ifTbl.ifEntries[portId].ipAddr     = cJSON_GetObjectItem(item, NSTK_PORT_CFG_FIELD_IP_ADDR)->valueint;
+        g_ifTbl.ifEntries[portId].adminState = cJSON_GetObjectItem(item, NSTK_PORT_CFG_FIELD_ADMIN_STATE)->valueint;
+
+        const char* mac_str = cJSON_GetObjectItem(item, NSTK_PORT_CFG_FIELD_MAC_ADDR)->valuestring;
+        if (!NSTK_ParseMacStr(mac_str, &g_ifTbl.ifEntries[portId].macAddr)) {
+            NSTK_LOG_ERROR("Invalid MAC address format");
+            continue;
+        }
+
+        NSTK_PrintPortCfgEntry(&g_ifTbl.ifEntries[portId]);
+    }
+
+    cJSON_Delete(root);
+    return EXIT_SUCCESS;
+}
+
+
+int NSTK_ReadPortConfig()
+{
+    FILE* file = fopen(NSTK_PORT_CFG_JSON, "r");
+    if (file == NULL) {
+        NSTK_LOG_ERROR("Failed to open file: %s", NSTK_PORT_CFG_JSON);
+        return EXIT_FAILURE;
+    }
+
+    fseek(file, 0, SEEK_END);
+    const size_t len = ftell(file);
+    rewind(file);
+
+    char* jsonStr = malloc(len + 1);
+    (void)fread(jsonStr, 1, len, file);
+    jsonStr[len] = '\0';
+    fclose(file);
+
+    if (NSTK_ParsePortCfgJson(jsonStr) != EXIT_SUCCESS) {
+        NSTK_LOG_ERROR("Failed to parse port cfg");
+        return EXIT_FAILURE;
+    }
+
+    free(jsonStr);
+    return EXIT_SUCCESS;
+}
 
 static void NSTK_GetInterfaceMac(const char* ifName, struct rte_ether_addr* etherAddr)
 {
@@ -54,12 +139,13 @@ int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
     if (!rte_eth_dev_is_valid_port(port)) {
         return EXIT_FAILURE;
     }
+    g_ifTbl.ifEntries[port].portId = port;
 
     memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 
     int ret = rte_eth_dev_info_get(port, &dev_info);
     if (ret != 0) {
-        NSTK_LOG_ERROR("Error during getting device (port %u) info: %s\n", port, strerror(-ret));
+        NSTK_LOG_ERROR("Error during getting device (port %u) info: %s", port, strerror(-ret));
         return ret;
     }
 
@@ -98,105 +184,14 @@ int NSTK_PortInit(uint16_t port, struct rte_mempool* mbuf_pool)
         return ret;
     }
 
-    NSTK_GetInterfaceMac("eth1", &g_ifEntryEth1.macAddr);
-    NSTK_LOG_INFO("port %u, mac: %02X:%02X:%02X:%02X:%02X:%02X", port, RTE_ETHER_ADDR_BYTES(&g_ifEntryEth1.macAddr));
+    NSTK_GetInterfaceMac(g_ifTbl.ifEntries[port].ifName, &g_ifTbl.ifEntries[port].macAddr);
+    NSTK_LOG_INFO("port %u, mac: %02X:%02X:%02X:%02X:%02X:%02X", port,
+                  RTE_ETHER_ADDR_BYTES(&g_ifTbl.ifEntries[port].macAddr));
 
     ret = rte_eth_promiscuous_enable(port);
     if (ret != 0) {
         return ret;
     }
 
-    g_ifEntryEth1.portId = port;
-
     return EXIT_SUCCESS;
-}
-
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-#include "cJSON.h"
-
-#define NSTK_IF_NAME_LEN 32
-
-typedef struct {
-    uint32_t portId;
-    char ifName[NSTK_IF_NAME_LEN];
-    uint32_t mtu;
-    struct rte_ether_addr {
-        uint8_t addr_bytes[6];
-    } macAddr;
-    uint32_t ipAddr;
-    bool adminState;
-} NSTK_IfEntry;
-
-bool parse_mac(const char *mac_str, struct rte_ether_addr *mac) {
-    return sscanf(mac_str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-                  &mac->addr_bytes[0], &mac->addr_bytes[1], &mac->addr_bytes[2],
-                  &mac->addr_bytes[3], &mac->addr_bytes[4], &mac->addr_bytes[5]) == 6;
-}
-
-void print_entry(const NSTK_IfEntry *entry) {
-    printf("Port ID: %u\n", entry->portId);
-    printf("Interface Name: %s\n", entry->ifName);
-    printf("MTU: %u\n", entry->mtu);
-    printf("MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-           entry->macAddr.addr_bytes[0], entry->macAddr.addr_bytes[1], entry->macAddr.addr_bytes[2],
-           entry->macAddr.addr_bytes[3], entry->macAddr.addr_bytes[4], entry->macAddr.addr_bytes[5]);
-    printf("IP Address: %u\n", entry->ipAddr);
-    printf("Admin State: %s\n\n", entry->adminState ? "Up" : "Down");
-}
-
-void parse_json(const char *json_str) {
-    cJSON *root = cJSON_Parse(json_str);
-    if (!root || !cJSON_IsArray(root)) {
-        printf("Invalid JSON\n");
-        return;
-    }
-
-    int count = cJSON_GetArraySize(root);
-    for (int i = 0; i < count; i++) {
-        cJSON *item = cJSON_GetArrayItem(root, i);
-        NSTK_IfEntry entry;
-
-        entry.portId = cJSON_GetObjectItem(item, "portId")->valueint;
-        strncpy(entry.ifName, cJSON_GetObjectItem(item, "ifName")->valuestring, NSTK_IF_NAME_LEN - 1);
-        entry.ifName[NSTK_IF_NAME_LEN - 1] = '\0';
-        entry.mtu = cJSON_GetObjectItem(item, "mtu")->valueint;
-        entry.ipAddr = cJSON_GetObjectItem(item, "ipAddr")->valueint;
-        entry.adminState = cJSON_GetObjectItem(item, "adminState")->valueint;
-
-        const char *mac_str = cJSON_GetObjectItem(item, "macAddr")->valuestring;
-        if (!parse_mac(mac_str, &entry.macAddr)) {
-            printf("Invalid MAC address format\n");
-            continue;
-        }
-
-        print_entry(&entry);
-    }
-
-    cJSON_Delete(root);
-}
-
-int main() {
-    FILE *file = fopen("interfaces.json", "r");
-    if (!file) {
-        perror("Failed to open file");
-        return 1;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long len = ftell(file);
-    rewind(file);
-
-    char *data = malloc(len + 1);
-    fread(data, 1, len, file);
-    data[len] = '\0';
-    fclose(file);
-
-    parse_json(data);
-
-    free(data);
-    return 0;
 }

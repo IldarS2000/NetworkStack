@@ -1,0 +1,10 @@
+[
+  {
+    "portId": 0,
+    "ifName": "eth1",
+    "mtu": 1500,
+    "macAddr": "00:00:00:00:00:00",
+    "ipAddr": 0,
+    "adminState": true
+  }
+]

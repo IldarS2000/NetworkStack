@@ -47,6 +47,11 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    if (NSTK_ReadPortConfig() != EXIT_SUCCESS) {
+        NSTK_LOG_ERROR("Failed to read port config");
+        return EXIT_FAILURE;
+    }
+
     uint16_t portid = 0;
     RTE_ETH_FOREACH_DEV(portid)
     {

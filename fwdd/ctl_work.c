@@ -36,6 +36,25 @@ static void NSTK_ExtractIpFromStr(const char *input, char *output, size_t size) 
     }
 }
 
+static void NSTK_ExtractIpDevNameFromStr(const char *input, char *output) {
+    const char *iface = strchr(input, '/');
+    if (iface != NULL) {
+        ++iface;
+        while (*iface && (*iface >= '0' && *iface <= '9')) {
+            ++iface;
+        }
+        strncpy(output, iface, NSTK_IF_NAME_LEN - 1); 
+    }
+}
+
+static void NSTK_ExtractIfStateDevNameFromStr(const char *input, char *output) {
+    if (strncmp(input, "up", 2) == 0) {
+        strncpy(output, input + 2, NSTK_IF_NAME_LEN - 1); 
+    } else if (strncmp(input, "down", 4) == 0) {
+        strncpy(output, input + 4, NSTK_IF_NAME_LEN - 1); 
+    } 
+}
+
 static uint32_t NSTK_IpStrToUint32(const char *ipStr) {
     struct in_addr ip_addr = {0};
     if (inet_pton(AF_INET, ipStr, &ip_addr) != 1) {
@@ -50,18 +69,46 @@ static void NSTK_HandleIpModule(char* buff)
     if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IP_ADD) {
         char ipStr[NSTK_IP_STR_LEN] = {0};
         NSTK_ExtractIpFromStr(buff + 2, ipStr, NSTK_IP_STR_LEN);
-        g_ifEntryEth1.ipAddr = NSTK_IpStrToUint32(ipStr);
+        char ifStr[NSTK_IF_NAME_LEN] = {0};
+        NSTK_ExtractIpDevNameFromStr(buff, ifStr);
+
+        for (size_t port = 0; port <g_ifTbl.size; ++port) {
+            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+                g_ifTbl.ifEntries[port].ipAddr = NSTK_IpStrToUint32(ipStr);
+            }
+        }
     } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IP_DEL) {
-        g_ifEntryEth1.ipAddr = 0;
+        char ifStr[NSTK_IF_NAME_LEN] = {0};
+        NSTK_ExtractIpDevNameFromStr(buff, ifStr);
+        
+        for (size_t port = 0; port <g_ifTbl.size; ++port) {
+            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+                g_ifTbl.ifEntries[port].ipAddr = 0;
+            }
+        }
     }
 }
 
 static void NSTK_HandleIfModule(char* buff)
 {
     if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IF_UP) {
-        g_ifEntryEth1.adminState = NSTK_IF_ADMIN_STATE_UP;
+        char ifStr[NSTK_IF_NAME_LEN] = {0};
+        NSTK_ExtractIfStateDevNameFromStr(buff + 2, ifStr);
+
+        for (size_t port = 0; port <g_ifTbl.size; ++port) {
+            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+                g_ifTbl.ifEntries[port].adminState = NSTK_IF_ADMIN_STATE_UP;
+            }
+        }
     } else if (buff[NSTK_OPCODE_POS] == NSTK_OPCODE_IF_DOWN) {
-        g_ifEntryEth1.adminState = NSTK_IF_ADMIN_STATE_DOWN;
+        char ifStr[NSTK_IF_NAME_LEN] = {0};
+        NSTK_ExtractIfStateDevNameFromStr(buff + 2, ifStr);
+
+        for (size_t port = 0; port <g_ifTbl.size; ++port) {
+            if (strcmp(g_ifTbl.ifEntries[port].ifName, ifStr) == 0) {
+                g_ifTbl.ifEntries[port].adminState = NSTK_IF_ADMIN_STATE_DOWN;
+            }
+        }
     }
 }
 

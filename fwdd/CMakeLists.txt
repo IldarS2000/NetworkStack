@@ -5,7 +5,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O3 -march=native -ffast-math")
 
-find_package(cJSON REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(DPDK REQUIRED libdpdk)
 
@@ -19,9 +18,10 @@ endif()
 
 aux_source_directory(. SOURCES)
 aux_source_directory(../common SOURCES)
+aux_source_directory(../external/cjson SOURCES)
 add_executable(${PROJECT_NAME} ${SOURCES})
-target_link_libraries(${PROJECT_NAME} ${DPDK_LIBRARIES} cjson)
-target_include_directories(${PROJECT_NAME} PRIVATE ../common)
+target_link_libraries(${PROJECT_NAME} ${DPDK_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PRIVATE ../common ../external/cjson)
 
 set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/output")
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -30,3 +30,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR}/lib
 )
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/fwdd_start.sh DESTINATION ${OUTPUT_DIR}/bin)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/port_cfg.json DESTINATION ${OUTPUT_DIR}/cfg)

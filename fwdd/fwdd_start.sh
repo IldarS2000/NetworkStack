@@ -8,3 +8,4 @@ sleep 5
 /usr/bin/fwdd -l 0-3 -n 4 --vdev=net_af_xdp1,iface=eth1
 # /usr/bin/fwdd -l 0-3 -n 4 --vdev=net_pcap1,iface=eth1
 # /usr/bin/fwdd -l 0-3 -n 4 --vdev=net_af_packet1,iface=eth1
+# /usr/bin/fwdd -l 0-3 -n 4 -- --no-mac-updates --no-promiscuous -w 0000:83:00.1

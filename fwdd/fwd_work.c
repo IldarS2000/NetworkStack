@@ -22,6 +22,16 @@
 
 #define NSTK_BURST_SIZE 32
 
+void NSTK_HandlePkt(struct rte_mbuf** pkts, uint16_t port)
+{
+    struct rte_mbuf* pkt = pkts[0];
+    int txNum = NSTK_ArpReply(pkts, port);
+    txNum += NSTK_IcmpReply(pkts, port);
+    if (unlikely(txNum == 0)) {
+        rte_pktmbuf_free(pkt);
+    }
+}
+
 void NSTK_LcoreFwdRun()
 {
     NSTK_LOG_INFO("Lcore %u -- forwarding plane", rte_lcore_id());
@@ -53,11 +63,7 @@ void NSTK_LcoreFwdRun()
             uint16_t pktLen  = rte_pktmbuf_pkt_len(pkt);
             NSTK_TRACE_MBUF(pktPayload, pktLen);
 
-            int txNum = NSTK_ArpReply(pkts, port);
-            txNum += NSTK_IcmpReply(pkts, port);
-            if (unlikely(txNum == 0)) {
-                rte_pktmbuf_free(pkt);
-            }
+            NSTK_HandlePkt(pkts, port);
         }
     }
 }

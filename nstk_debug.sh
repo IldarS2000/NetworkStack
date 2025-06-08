@@ -4,6 +4,9 @@
 ###### IT IS JUST SET OF COMMANDS FOR DEBUG NSTK ######
 #######################################################
 
+# nstk
+docker exec -it nstk bash
+
 # fwdctl cfg
 fwdctl ip add 192.168.0.2/24 eth1
 fwdctl ip del 192.168.0.2/24 eth1

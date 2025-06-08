@@ -10,3 +10,4 @@ COPY build/output/bin/fwdd_start.sh /usr/bin
 COPY build/output/bin/fwdctl /usr/bin
 COPY build/output/bin/fwdd /usr/bin
 CMD ["/usr/bin/fwdd_start.sh"]
+
